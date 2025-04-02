@@ -1,92 +1,91 @@
 import streamlit as st
 import time
 import random
-import os
-import sys
+import requests
 from datetime import datetime, timedelta
 import statistics
 from dateutil import parser
-from selenium import webdriver
-from selenium.webdriver.chrome.service import Service
-from selenium.webdriver.common.by import By
-from selenium.webdriver.support.ui import WebDriverWait
-from selenium.webdriver.support import expected_conditions as EC
-from selenium.webdriver.chrome.options import Options
+from bs4 import BeautifulSoup  # Import BeautifulSoup for HTML parsing
 
-# Click "Show more" until enough trades are loaded
-def click_show_more_until(driver, mode="days", value=None):
-    last_count = 0
-    click_attempts = 0
-    while True:
-        try:
-            trades = driver.find_elements(By.CLASS_NAME, "call-box")
-            if not trades:
-                break
+# Browserless API setup
+API_URL = "https://browserless.io/webdriver"
+API_KEY = "S3T6z4PxrpL5U5862f350c798784656b9eedb3af1f"
 
-            if mode == "calls" and len(trades) >= value:
-                break
-            elif mode == "days" and value is not None:
-                last_trade_text = trades[-1].text.split("\n")
-                last_timestamp = last_trade_text[1]
-                last_date = parser.parse(last_timestamp)
-                if last_date < datetime.now() - timedelta(days=value):
-                    break
-            elif mode == "24h":
-                last_trade_text = trades[-1].text.split("\n")
-                last_timestamp = last_trade_text[1]
-                last_date = parser.parse(last_timestamp)
-                if last_date < datetime.now() - timedelta(days=1):
-                    break
-
-            if len(trades) == last_count:
-                break
-            last_count = len(trades)
-
-            driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
-            time.sleep(0.4)
-
-            show_more = WebDriverWait(driver, 3).until(
-                EC.element_to_be_clickable((By.CSS_SELECTOR, "body > div.relative.mb-16.flex.min-h-screen.flex-col.items-center.justify-center.bg-black.px-4.md\\:px-6.xl\\:px-16 > div.z-40.flex.w-full.flex-col.items-center > div > div.card-container.relative.w-full.overflow-hidden.rounded-lg.border-2.border-\\[\\#0c5138\\].bg-sect-dark\\/80.shadow-lg > div > div.px-8 > p"))
-            )
-            show_more.click()
-            click_attempts += 1
-            time.sleep(1.0)
-
-        except Exception:
-            break
-
-    # Removed the st.info line here
-    # st.info(f"Clicked 'Show more' {click_attempts} times.")  # <-- Removed
-
-# Convert shorthand values like 5.6K, 3.2M, etc.
-def convert(val):
-    val = val.upper().replace(",", "")
-    if "K" in val:
-        return float(val.replace("K", "")) * 1_000
-    elif "M" in val:
-        return float(val.replace("M", "")) * 1_000_000
-    elif "B" in val:
-        return float(val.replace("B", "")) * 1_000_000_000
+# Function to start a Browserless session
+def start_browser_session():
+    headers = {
+        "Authorization": f"Bearer {API_KEY}"
+    }
+    payload = {
+        "url": "https://sectbot.com",  # Starting page (can be adjusted)
+        "waitFor": "document.readyState=='complete'"
+    }
+    response = requests.post(f"{API_URL}/launch", headers=headers, json=payload)
+    
+    if response.status_code == 200:
+        return response.json()['session']
     else:
-        return float(val)
+        st.error("Failed to start Browserless session.")
+        return None
 
-# Extract trade blocks from the page
-def parse_recent_trades(driver):
-    trade_elements = driver.find_elements(By.CLASS_NAME, "call-box")
+# Function to end the Browserless session
+def end_browser_session(session_id):
+    headers = {
+        "Authorization": f"Bearer {API_KEY}"
+    }
+    payload = {
+        "session": session_id
+    }
+    requests.post(f"{API_URL}/close", headers=headers, json=payload)
+
+# Function to scrape the page and get stats
+def get_caller_stats(session_id, name, mode, custom_val=None):
+    headers = {
+        "Authorization": f"Bearer {API_KEY}"
+    }
+    url = f"https://sectbot.com/caller/{name}"
+    
+    # Interact with the browserless API to go to the page and extract the content
+    payload = {
+        "session": session_id,
+        "url": url,
+        "script": "return document.body.innerHTML;"  # Scraping the page content
+    }
+    page_content_response = requests.post(f"{API_URL}/execute", headers=headers, json=payload)
+    
+    if page_content_response.status_code != 200:
+        st.error(f"Failed to retrieve page content for {name}.")
+        return
+    
+    page_content = page_content_response.json()['value']
+    
+    # Parse the page content using BeautifulSoup
+    soup = BeautifulSoup(page_content, "html.parser")
+    
+    # Extract trade data
     trades = []
+    trade_elements = soup.find_all("div", class_="call-box")
+    
     for el in trade_elements:
         try:
-            text = el.text.split("\n")
-            token = text[0]
-            timestamp = text[1]
-            called = convert(text[text.index("Called at") + 1])
-            reached = convert(text[text.index("Reached") + 1])
+            token = el.find("h3").get_text()  # Example: Adjust based on the HTML structure
+            timestamp = el.find("span", class_="timestamp").get_text()  # Adjust as needed
+            called = float(el.find("span", class_="called").get_text())  # Adjust as needed
+            reached = float(el.find("span", class_="reached").get_text())  # Adjust as needed
             dt = parser.parse(timestamp)
             mult = reached / called if called > 0 else 0
             trades.append({"token": token, "timestamp": dt, "multiplier": mult})
         except:
             continue
-    return trades
+    
+    # Now summarize the trades based on the mode
+    t, a, w, m = summarize_trades(trades)
+    
+    st.subheader(f"{name} | Stats for {mode}")
+    st.write(f"📈 Trades: {t}")
+    st.write(f"💰 Avg: {a:.2f}x")
+    st.write(f"🔺 Median: {m:.2f}x")
+    st.write(f"✅ Winrate: {w:.1f}%")
 
 # Summarize trade performance over given period
 def summarize_trades(trades):
@@ -100,78 +99,13 @@ def summarize_trades(trades):
     winrate = (wins / total) * 100
     return (total, avg_x, winrate, median_x)
 
-# Extract stats from caller page
-def get_caller_stats(driver, name, mode, custom_val=None):
-    url = f"https://sectbot.com/caller/{name}"
-    driver.get(url)
-
-    try:
-        WebDriverWait(driver, 15).until(
-            EC.presence_of_element_located((By.XPATH, "//div[contains(text(), 'Winrate')]/following-sibling::div"))
-        )
-        driver.execute_script("window.scrollTo(0, 300);")
-        time.sleep(0.5)
-        click_show_more_until(driver, mode, custom_val)
-        trades = parse_recent_trades(driver)
-
-        if mode == "calls":
-            trades = trades[:custom_val]
-            t, a, w, m = summarize_trades(trades)
-            st.subheader(f"{name} | Last {custom_val} calls")
-            st.write(f"📈 Trades: {t}")
-            st.write(f"💰 Avg: {a:.2f}x")
-            st.write(f"🔺 Median: {m:.2f}x")
-            st.write(f"✅ Winrate: {w:.1f}%")
-
-        elif mode == "days":
-            t_custom = [t for t in trades if t['timestamp'] >= datetime.now() - timedelta(days=custom_val)]
-            t, a, w, m = summarize_trades(t_custom)
-            st.subheader(f"{name} | Last {custom_val} Days")
-            st.write(f"📅 Trades: {t}")
-            st.write(f"💰 Avg: {a:.2f}x")
-            st.write(f"🔺 Median: {m:.2f}x")
-            st.write(f"✅ Winrate: {w:.1f}%")
-
-        elif mode == "24h":
-            recent = [t for t in trades if t['timestamp'] >= datetime.now() - timedelta(days=1)]
-            t, a, w, m = summarize_trades(recent)
-            st.subheader(f"{name} | Last 24 Hours")
-            st.write(f"⏰ Trades: {t}")
-            st.write(f"💰 Avg: {a:.2f}x")
-            st.write(f"🔺 Median: {m:.2f}x")
-            st.write(f"✅ Winrate: {w:.1f}%")
-
-    except Exception as e:
-        st.error(f"Scraping failed for {name}: {e}")
-
-# Setup Selenium WebDriver
-def setup_driver():
-    chrome_options = Options()
-    chrome_options.add_argument("--headless")  # Use headless mode for deployment
-    chrome_options.add_argument("--disable-gpu")
-    chrome_options.add_argument("--log-level=3")
-    chrome_options.add_argument("--blink-settings=imagesEnabled=false")
-    chrome_options.add_argument("--disable-extensions")
-    chrome_options.add_argument("--disable-dev-shm-usage")
-    chrome_options.add_argument("--no-sandbox")
-    chrome_options.add_argument(f"--user-agent={random_user_agent()}")
-
-    # Specify the path to chromedriver if it's in the same directory as your script
-    service = Service(executable_path=os.path.join(os.getcwd(), "chromedriver.exe"))
-    return webdriver.Chrome(service=service, options=chrome_options)
-
-def random_user_agent():
-    return random.choice([ 
-        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/123.0.0.0 Safari/537.36", 
-        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 Chrome/122.0.0.0 Safari/537.36", 
-        "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 Chrome/121.0.0.0 Safari/537.36", 
-    ])
-
 # Main script with Streamlit
 def main():
     st.title("SECTbot Caller Stats")
     
-    driver = setup_driver()
+    session_id = start_browser_session()  # Start the Browserless session
+    if not session_id:
+        return
     
     caller = st.text_input("Enter caller username:")
     mode_choice = st.selectbox("Choose mode:", [
@@ -197,7 +131,10 @@ def main():
             mode = "calls"
             value = custom_calls
 
-        get_caller_stats(driver, caller, mode, value)
+        get_caller_stats(session_id, caller, mode, value)
+    
+    # End the session after use
+    end_browser_session(session_id)
 
 if __name__ == "__main__":
     main()
