@@ -21,12 +21,14 @@ def start_browser_session():
         "waitFor": "document.readyState=='complete'"
     }
     response = requests.post(f"{API_URL}/launch", headers=headers, json=payload)
+    print(f"Browserless Response: {response.status_code} - {response.text}")  # Add this line to print the response
     
-    if response.status_code == 200:
-        return response.json()['session']
-    else:
-        st.error("Failed to start Browserless session.")
-        return None
+    if response.status_code != 200:
+        st.error(f"Failed to start Browserless session: {response.text}")
+        return None  # Return None if there was an error
+
+    return response.json()['session']
+
 
 # Function to end the Browserless session
 def end_browser_session(session_id):
