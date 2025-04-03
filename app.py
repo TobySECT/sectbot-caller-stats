@@ -165,21 +165,23 @@ def setup_driver():
     chrome_options.add_argument("--no-sandbox")
     chrome_options.add_argument("--disable-dev-shm-usage")
     chrome_options.add_argument("--disable-setuid-sandbox")
-    # First, check if CHROME_BIN environment variable is set (via Dockerfile)
-    binary_location = os.environ.get("CHROME_BIN")
-    if binary_location and os.path.exists(binary_location):
+    # Check for CHROME_BIN environment variable (set in Dockerfile)
+    binary_location = os.environ.get("CHROME_BIN", "/usr/bin/chromium-browser")
+    if os.path.exists(binary_location):
         chrome_options.binary_location = binary_location
     else:
-        # Otherwise, try common locations
+        # Otherwise try common paths
         possible_binaries = ["/usr/bin/chromium", "/usr/bin/chromium-browser", "/usr/bin/google-chrome"]
+        found = False
         for binary in possible_binaries:
             if os.path.exists(binary):
                 chrome_options.binary_location = binary
+                found = True
                 break
-        else:
+        if not found:
             raise ValueError("No Chrome/Chromium binary found on PATH.")
     chrome_options.add_argument(f"--user-agent={random_user_agent()}")
-    # Use the system-installed chromium-driver installed via apt in your Dockerfile
+    # Use system-installed chromium-driver (installed via apt in your Dockerfile)
     service = Service(executable_path="/usr/bin/chromium-driver")
     return webdriver.Chrome(service=service, options=chrome_options)
 
