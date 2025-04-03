@@ -170,8 +170,10 @@ def setup_driver():
     options.add_argument("--disable-gpu")
     options.add_argument("--no-sandbox")
     options.add_argument("--disable-dev-shm-usage")
+    # Set any additional options if desired
+    options.set_capability("browserstack.debug", True)
     
-    # Merge desired capabilities into options
+    # Merge desired capabilities into options using set_capability
     options.set_capability("os", "Windows")
     options.set_capability("os_version", "10")
     options.set_capability("browser", "Chrome")
@@ -228,55 +230,55 @@ if caller:
                 trades_25 = trades_all[:25]
                 trades_50 = trades_all[:50]
             
-            while True:
-                st.markdown("**Choose TP Calculation Method:**")
-                method_choice = st.radio("", ("Show TP thresholds with Hit Rate", "Show Best 3 TPs (based on Expected Return)", "Go back to Main Menu"))
-                if method_choice == "Show TP thresholds with Hit Rate":
-                    t25, a25, w25, m25 = summarize_trades(trades_25)
-                    st.markdown(f"**{caller} | Last 25 calls**")
-                    st.write("────────────────────────────────────────")
-                    st.write(f"📈 Trades: {t25}  \n💰 Avg: {a25:.2f}x  \n🔺 Median: {m25:.2f}x  \n✅ Winrate: {w25:.1f}%")
-                    st.write("────────────────────────────────────────")
-                    st.write("--- TP Calculation for Last 25 Trades ---")
-                    tp_stats_25 = calculate_tps(trades_25)
-                    for tp in sorted(tp_stats_25.keys()):
-                        st.write(f"TP: {tp}x | Hit Rate: {tp_stats_25[tp]:.1f}%")
-                    
-                    t50, a50, w50, m50 = summarize_trades(trades_50)
-                    st.markdown(f"**{caller} | Last 50 calls**")
-                    st.write("────────────────────────────────────────")
-                    st.write(f"📈 Trades: {t50}  \n💰 Avg: {a50:.2f}x  \n🔺 Median: {m50:.2f}x  \n✅ Winrate: {w50:.1f}%")
-                    st.write("────────────────────────────────────────")
-                    st.write("--- TP Calculation for Last 50 Trades ---")
-                    tp_stats_50 = calculate_tps(trades_50)
-                    for tp in sorted(tp_stats_50.keys()):
-                        st.write(f"TP: {tp}x | Hit Rate: {tp_stats_50[tp]:.1f}%")
-                elif method_choice == "Show Best 3 TPs (based on Expected Return)":
-                    expected_returns_25 = calculate_expected_returns(trades_25)
-                    best_three_25 = sorted(expected_returns_25.items(), key=lambda x: x[1], reverse=True)[:3]
-                    
-                    expected_returns_50 = calculate_expected_returns(trades_50)
-                    best_three_50 = sorted(expected_returns_50.items(), key=lambda x: x[1], reverse=True)[:3]
-                    
-                    t25, a25, w25, m25 = summarize_trades(trades_25)
-                    st.markdown(f"**{caller} | Last 25 calls**")
-                    st.write("────────────────────────────────────────")
-                    st.write(f"📈 Trades: {t25}  \n💰 Avg: {a25:.2f}x  \n🔺 Median: {m25:.2f}x  \n✅ Winrate: {w25:.1f}%")
-                    st.write("────────────────────────────────────────")
-                    st.write("--- Best 3 TPs for Last 25 Trades ---")
-                    for tp, er in best_three_25:
-                        st.write(f"TP: {tp}x | Expected Return: ${er:.2f} per $100 trade")
-                    
-                    t50, a50, w50, m50 = summarize_trades(trades_50)
-                    st.markdown(f"**{caller} | Last 50 calls**")
-                    st.write("────────────────────────────────────────")
-                    st.write(f"📈 Trades: {t50}  \n💰 Avg: {a50:.2f}x  \n🔺 Median: {m50:.2f}x  \n✅ Winrate: {w50:.1f}%")
-                    st.write("────────────────────────────────────────")
-                    st.write("--- Best 3 TPs for Last 50 Trades ---")
-                    for tp, er in best_three_50:
-                        st.write(f"TP: {tp}x | Expected Return: ${er:.2f} per $100 trade")
-                elif method_choice == "Go back to Main Menu":
-                    st.write("Returning to main menu.")
-                    break
-                else:
-                    st.error("Invalid choice. Please select an option.")
+            # Remove the while loop. Instead, show the TP Calculation method selection once.
+            tp_method = st.radio(
+                "Choose TP Calculation Method:",
+                ("Show TP thresholds with Hit Rate", "Show Best 3 TPs (based on Expected Return)", "Go back to Main Menu"),
+                key="tp_method"
+            )
+            if tp_method == "Show TP thresholds with Hit Rate":
+                t25, a25, w25, m25 = summarize_trades(trades_25)
+                st.markdown(f"**{caller} | Last 25 calls**")
+                st.write("────────────────────────────────────────")
+                st.write(f"📈 Trades: {t25}  \n💰 Avg: {a25:.2f}x  \n🔺 Median: {m25:.2f}x  \n✅ Winrate: {w25:.1f}%")
+                st.write("────────────────────────────────────────")
+                st.write("--- TP Calculation for Last 25 Trades ---")
+                tp_stats_25 = calculate_tps(trades_25)
+                for tp in sorted(tp_stats_25.keys()):
+                    st.write(f"TP: {tp}x | Hit Rate: {tp_stats_25[tp]:.1f}%")
+                
+                t50, a50, w50, m50 = summarize_trades(trades_50)
+                st.markdown(f"**{caller} | Last 50 calls**")
+                st.write("────────────────────────────────────────")
+                st.write(f"📈 Trades: {t50}  \n💰 Avg: {a50:.2f}x  \n🔺 Median: {m50:.2f}x  \n✅ Winrate: {w50:.1f}%")
+                st.write("────────────────────────────────────────")
+                st.write("--- TP Calculation for Last 50 Trades ---")
+                tp_stats_50 = calculate_tps(trades_50)
+                for tp in sorted(tp_stats_50.keys()):
+                    st.write(f"TP: {tp}x | Hit Rate: {tp_stats_50[tp]:.1f}%")
+            elif tp_method == "Show Best 3 TPs (based on Expected Return)":
+                expected_returns_25 = calculate_expected_returns(trades_25)
+                best_three_25 = sorted(expected_returns_25.items(), key=lambda x: x[1], reverse=True)[:3]
+                
+                expected_returns_50 = calculate_expected_returns(trades_50)
+                best_three_50 = sorted(expected_returns_50.items(), key=lambda x: x[1], reverse=True)[:3]
+                
+                t25, a25, w25, m25 = summarize_trades(trades_25)
+                st.markdown(f"**{caller} | Last 25 calls**")
+                st.write("────────────────────────────────────────")
+                st.write(f"📈 Trades: {t25}  \n💰 Avg: {a25:.2f}x  \n🔺 Median: {m25:.2f}x  \n✅ Winrate: {w25:.1f}%")
+                st.write("────────────────────────────────────────")
+                st.write("--- Best 3 TPs for Last 25 Trades ---")
+                for tp, er in best_three_25:
+                    st.write(f"TP: {tp}x | Expected Return: ${er:.2f} per $100 trade")
+                
+                t50, a50, w50, m50 = summarize_trades(trades_50)
+                st.markdown(f"**{caller} | Last 50 calls**")
+                st.write("────────────────────────────────────────")
+                st.write(f"📈 Trades: {t50}  \n💰 Avg: {a50:.2f}x  \n🔺 Median: {m50:.2f}x  \n✅ Winrate: {w50:.1f}%")
+                st.write("────────────────────────────────────────")
+                st.write("--- Best 3 TPs for Last 50 Trades ---")
+                for tp, er in best_three_50:
+                    st.write(f"TP: {tp}x | Expected Return: ${er:.2f} per $100 trade")
+            elif tp_method == "Go back to Main Menu":
+                st.write("Returning to main menu.")
