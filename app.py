@@ -6,7 +6,6 @@ from datetime import datetime, timedelta
 import statistics
 from dateutil import parser
 from selenium import webdriver
-from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
@@ -159,31 +158,25 @@ def best_tps(trades, top_n=3):
     return best
 
 def setup_driver():
-    chrome_options = Options()
-    chrome_options.add_argument("--headless")
-    chrome_options.add_argument("--disable-gpu")
-    chrome_options.add_argument("--no-sandbox")
-    chrome_options.add_argument("--disable-dev-shm-usage")
-    chrome_options.add_argument("--disable-setuid-sandbox")
-    # Check for CHROME_BIN environment variable (set in Dockerfile)
-    binary_location = os.environ.get("CHROME_BIN", "/usr/bin/chromium-browser")
-    if os.path.exists(binary_location):
-        chrome_options.binary_location = binary_location
-    else:
-        # Otherwise try common paths
-        possible_binaries = ["/usr/bin/chromium", "/usr/bin/chromium-browser", "/usr/bin/google-chrome"]
-        found = False
-        for binary in possible_binaries:
-            if os.path.exists(binary):
-                chrome_options.binary_location = binary
-                found = True
-                break
-        if not found:
-            raise ValueError("No Chrome/Chromium binary found on PATH.")
-    chrome_options.add_argument(f"--user-agent={random_user_agent()}")
-    # Use system-installed chromium-driver (installed via apt in your Dockerfile)
-    service = Service(executable_path="/usr/bin/chromium-driver")
-    return webdriver.Chrome(service=service, options=chrome_options)
+    # Using BrowserStack remote webdriver
+    from selenium.webdriver.common.desired_capabilities import DesiredCapabilities
+
+    # Hardcoded credentials for now (for testing only—do not use in production)
+    username = "toby_1HAemr"
+    access_key = "4vsM5psR28yscxcybNjV"
+    remote_url = f"https://{username}:{access_key}@hub-cloud.browserstack.com/wd/hub"
+
+    desired_cap = DesiredCapabilities.CHROME.copy()
+    desired_cap["os"] = "Windows"
+    desired_cap["os_version"] = "10"
+    desired_cap["browser"] = "Chrome"
+    desired_cap["browser_version"] = "latest"
+    desired_cap["name"] = "Streamlit Selenium Test"
+
+    return webdriver.Remote(
+        command_executor=remote_url,
+        desired_capabilities=desired_cap
+    )
 
 def random_user_agent():
     return random.choice([
