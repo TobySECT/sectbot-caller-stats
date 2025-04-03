@@ -12,7 +12,9 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.chrome.options import Options
 
-# --- Functions from your script ---
+# ----------------------------
+# Functions (as provided)
+# ----------------------------
 
 def click_show_more_until(driver, mode="days", value=None, max_attempts=30):
     st.write("Loading Data...")
@@ -24,7 +26,6 @@ def click_show_more_until(driver, mode="days", value=None, max_attempts=30):
         "div.card-container.relative.w-full.overflow-hidden.rounded-lg.border-2.border-\\[\\#0c5138\\].bg-sect-dark\\/80.shadow-lg > "
         "div > div.px-8 > p"
     )
-    
     while attempts < max_attempts:
         trades = driver.find_elements(By.CLASS_NAME, "call-box")
         if mode == "calls" and len(trades) >= (value or 0):
@@ -38,10 +39,8 @@ def click_show_more_until(driver, mode="days", value=None, max_attempts=30):
                     break
                 elif mode == "24h" and last_date < datetime.now() - timedelta(days=1):
                     break
-        
         driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
         time.sleep(1)
-        
         try:
             show_more = WebDriverWait(driver, 5).until(
                 EC.element_to_be_clickable((By.CSS_SELECTOR, show_more_selector))
@@ -53,7 +52,6 @@ def click_show_more_until(driver, mode="days", value=None, max_attempts=30):
                 break
         except Exception as e:
             break
-        
         new_count = len(driver.find_elements(By.CLASS_NAME, "call-box"))
         if new_count <= prev_count:
             break
@@ -122,7 +120,7 @@ def get_caller_stats(driver, name, mode, custom_val=None, print_summary=True):
         if mode == "calls" and print_summary:
             trades = trades[:custom_val]
             t, a, w, m = summarize_trades(trades)
-            st.write(f"**{name} | Last {custom_val} calls**")
+            st.markdown(f"**{name} | Last {custom_val} calls**")
             st.write("────────────────────────────────────────")
             st.write(f"📈 Trades: {t}  \n💰 Avg: {a:.2f}x  \n🔺 Median: {m:.2f}x  \n✅ Winrate: {w:.1f}%")
             st.write("────────────────────────────────────────")
@@ -146,7 +144,7 @@ def calculate_tps(trades):
 def calculate_expected_returns(trades):
     """
     For each TP threshold, compute the expected return per $100 trade:
-      Expected Return = 100 × ( (hit_rate/100) × TP – (1 - hit_rate/100) )
+      Expected Return = 100 × ((hit_rate/100) × TP – (1 - hit_rate/100))
     """
     tp_stats = calculate_tps(trades)
     expected_returns = {}
@@ -177,21 +175,35 @@ def random_user_agent():
         "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 Chrome/121.0.0.0 Safari/537.36",
     ])
 
-# --- Streamlit UI ---
+# ----------------------------
+# Streamlit App UI
+# ----------------------------
 
 st.title("SectBot Caller Stats")
 
-caller = st.text_input("Enter caller username:")
+# Sidebar: Select Mode
+mode = st.sidebar.selectbox("Select Mode:", ("Custom Time Range (in days)", "Custom Number of Calls", "TP Calculation"))
+
+caller = st.sidebar.text_input("Enter caller username:")
+
 if caller:
-    # We'll load trades once for TP Calculation
-    option = st.selectbox("Choose an option:", ["TP Calculation", "Other Modes (not implemented)"])
-    if option == "TP Calculation":
-        # Load trades (up to 50 calls)
-        with st.spinner("Fetching trades..."):
+    if mode == "Custom Time Range (in days)":
+        days = st.sidebar.number_input("Enter number of days", min_value=1, value=4, step=1)
+        with st.spinner("Fetching stats..."):
+            driver = setup_driver()
+            get_caller_stats(driver, caller, "days", int(days))
+            driver.quit()
+    elif mode == "Custom Number of Calls":
+        num_calls = st.sidebar.number_input("Enter number of calls", min_value=1, value=50, step=1)
+        with st.spinner("Fetching stats..."):
+            driver = setup_driver()
+            get_caller_stats(driver, caller, "calls", int(num_calls))
+            driver.quit()
+    elif mode == "TP Calculation":
+        with st.spinner("Fetching trades for TP Calculation..."):
             driver = setup_driver()
             trades_all = get_caller_stats(driver, caller, "calls", 50, print_summary=False)
             driver.quit()
-        
         if not trades_all:
             st.error("No trades found for TP Calculation.")
         else:
@@ -203,11 +215,11 @@ if caller:
                 trades_25 = trades_all[:25]
                 trades_50 = trades_all[:50]
             
-            # Sub-menu for TP Calculation
+            # Sub-menu for TP Calculation Method (st.radio)
             method_choice = st.radio("**Choose TP Calculation Method:**", 
                                      ("Show TP thresholds with Hit Rate", "Show Best 3 TPs (based on Expected Return)", "Go back to Main Menu"))
             if method_choice == "Show TP thresholds with Hit Rate":
-                # Display summaries and TP thresholds
+                # Display summaries and TP thresholds with hit rate
                 t25, a25, w25, m25 = summarize_trades(trades_25)
                 st.markdown(f"**{caller} | Last 25 calls**")
                 st.write("────────────────────────────────────────")
