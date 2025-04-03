@@ -158,25 +158,38 @@ def best_tps(trades, top_n=3):
     return best
 
 def setup_driver():
-    # Using BrowserStack remote webdriver
     from selenium.webdriver.common.desired_capabilities import DesiredCapabilities
 
-    # Hardcoded credentials for now (for testing only—do not use in production)
+    # Hardcoded BrowserStack credentials
     username = "toby_1HAemr"
     access_key = "4vsM5psR28yscxcybNjV"
     remote_url = f"https://{username}:{access_key}@hub-cloud.browserstack.com/wd/hub"
-
+    
+    # Set up Chrome options
+    options = Options()
+    options.add_argument("--headless")
+    options.add_argument("--disable-gpu")
+    options.add_argument("--no-sandbox")
+    options.add_argument("--disable-dev-shm-usage")
+    
+    # You can set additional options here if desired.
+    options.set_capability('browserstack.debug', True)
+    
+    # Define desired capabilities – these will be merged with options
     desired_cap = DesiredCapabilities.CHROME.copy()
     desired_cap["os"] = "Windows"
     desired_cap["os_version"] = "10"
     desired_cap["browser"] = "Chrome"
     desired_cap["browser_version"] = "latest"
     desired_cap["name"] = "Streamlit Selenium Test"
-
-    return webdriver.Remote(
+    
+    # Create the remote WebDriver (Selenium 4 supports both options and desired_capabilities)
+    driver = webdriver.Remote(
         command_executor=remote_url,
+        options=options,
         desired_capabilities=desired_cap
     )
+    return driver
 
 def random_user_agent():
     return random.choice([
