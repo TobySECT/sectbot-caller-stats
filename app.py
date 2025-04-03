@@ -159,23 +159,27 @@ def best_tps(trades, top_n=3):
     return best
 
 def setup_driver():
-    # Use the system-installed driver from the Dockerfile
     chrome_options = Options()
     chrome_options.add_argument("--headless")
     chrome_options.add_argument("--disable-gpu")
     chrome_options.add_argument("--no-sandbox")
     chrome_options.add_argument("--disable-dev-shm-usage")
     chrome_options.add_argument("--disable-setuid-sandbox")
-    # Try multiple common binary locations for Chromium
-    possible_binaries = ["/usr/bin/chromium", "/usr/bin/chromium-browser", "/usr/bin/google-chrome"]
-    for binary in possible_binaries:
-        if os.path.exists(binary):
-            chrome_options.binary_location = binary
-            break
+    # First, check if CHROME_BIN environment variable is set (via Dockerfile)
+    binary_location = os.environ.get("CHROME_BIN")
+    if binary_location and os.path.exists(binary_location):
+        chrome_options.binary_location = binary_location
     else:
-        raise ValueError("No Chrome/Chromium binary found on PATH.")
+        # Otherwise, try common locations
+        possible_binaries = ["/usr/bin/chromium", "/usr/bin/chromium-browser", "/usr/bin/google-chrome"]
+        for binary in possible_binaries:
+            if os.path.exists(binary):
+                chrome_options.binary_location = binary
+                break
+        else:
+            raise ValueError("No Chrome/Chromium binary found on PATH.")
     chrome_options.add_argument(f"--user-agent={random_user_agent()}")
-    # Use the system-installed chromium-driver (installed via apt in your Dockerfile)
+    # Use the system-installed chromium-driver installed via apt in your Dockerfile
     service = Service(executable_path="/usr/bin/chromium-driver")
     return webdriver.Chrome(service=service, options=chrome_options)
 
