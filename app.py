@@ -11,6 +11,7 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.chrome.options import Options
+import chromedriver_autoinstaller
 
 # -----------------------------
 # Your Functions
@@ -26,7 +27,6 @@ def click_show_more_until(driver, mode="days", value=None, max_attempts=30):
         "div.card-container.relative.w-full.overflow-hidden.rounded-lg.border-2.border-\\[\\#0c5138\\].bg-sect-dark\\/80.shadow-lg > "
         "div > div.px-8 > p"
     )
-    
     while attempts < max_attempts:
         trades = driver.find_elements(By.CLASS_NAME, "call-box")
         if mode == "calls" and len(trades) >= (value or 0):
@@ -162,19 +162,17 @@ def best_tps(trades, top_n=3):
 import chromedriver_autoinstaller
 
 def setup_driver():
+    # Automatically install chromedriver if not present
+    chromedriver_autoinstaller.install()
     chrome_options = Options()
     chrome_options.add_argument("--headless")
     chrome_options.add_argument("--disable-gpu")
     chrome_options.add_argument("--no-sandbox")
     chrome_options.add_argument("--disable-dev-shm-usage")
-    # Specify the binary location for Chrome (or Chromium)
-    chrome_options.binary_location = "/usr/bin/google-chrome"
+    # Set binary location to a common Linux location for Chromium
+    chrome_options.binary_location = "/usr/bin/chromium-browser"
     chrome_options.add_argument(f"--user-agent={random_user_agent()}")
-    # Use the autoinstaller if you want, or remove it if you prefer to manage chromedriver manually.
-    # chromedriver_autoinstaller.install()  # Remove this if you set up chromedriver manually.
-    service = Service(executable_path="./chromedriver")  # Ensure chromedriver is in your repo
-    return webdriver.Chrome(service=service, options=chrome_options)
-
+    return webdriver.Chrome(options=chrome_options)
 
 def random_user_agent():
     return random.choice([
