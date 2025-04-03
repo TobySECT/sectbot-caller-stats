@@ -170,19 +170,16 @@ def setup_driver():
     options.add_argument("--disable-gpu")
     options.add_argument("--no-sandbox")
     options.add_argument("--disable-dev-shm-usage")
-    # Set any additional options if desired
-    options.set_capability("browserstack.debug", True)
     
-    desired_cap = DesiredCapabilities.CHROME.copy()
-    desired_cap["os"] = "Windows"
-    desired_cap["os_version"] = "10"
-    desired_cap["browser"] = "Chrome"
-    desired_cap["browser_version"] = "latest"
-    desired_cap["name"] = "Streamlit Selenium Test"
+    # Merge desired capabilities into options
+    options.set_capability("os", "Windows")
+    options.set_capability("os_version", "10")
+    options.set_capability("browser", "Chrome")
+    options.set_capability("browser_version", "latest")
+    options.set_capability("name", "Streamlit Selenium Test")
     
     return webdriver.Remote(
         command_executor=remote_url,
-        desired_capabilities=desired_cap,
         options=options
     )
 
