@@ -159,19 +159,23 @@ def best_tps(trades, top_n=3):
     return best
 
 def setup_driver():
-    # Use the local, system-installed driver
+    from selenium.webdriver.common.desired_capabilities import DesiredCapabilities
+
+    # For BrowserStack remote testing, you might use remote webdriver.
+    # For a local Selenium driver using your Dockerfile's installed binaries, use:
     chrome_options = Options()
     chrome_options.add_argument("--headless")
     chrome_options.add_argument("--disable-gpu")
     chrome_options.add_argument("--no-sandbox")
     chrome_options.add_argument("--disable-dev-shm-usage")
     chrome_options.add_argument("--disable-setuid-sandbox")
-    # Check for CHROME_BIN from environment; if not set, default to a common path.
+    
+    # Get the binary location from environment variable or default
     binary_location = os.environ.get("CHROME_BIN", "/usr/bin/chromium-browser")
     if os.path.exists(binary_location):
         chrome_options.binary_location = binary_location
     else:
-        # Try common paths
+        # Fall back to common paths if needed
         possible_binaries = ["/usr/bin/chromium", "/usr/bin/chromium-browser", "/usr/bin/google-chrome"]
         found = False
         for binary in possible_binaries:
@@ -181,8 +185,9 @@ def setup_driver():
                 break
         if not found:
             raise ValueError("No Chrome/Chromium binary found on PATH.")
+    
     chrome_options.add_argument(f"--user-agent={random_user_agent()}")
-    # Use the system-installed chromium-driver (ensure your Dockerfile installs this)
+    # Use the system-installed chromium-driver (installed via apt in the Dockerfile)
     service = Service(executable_path="/usr/bin/chromium-driver")
     return webdriver.Chrome(service=service, options=chrome_options)
 
