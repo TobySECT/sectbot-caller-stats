@@ -159,16 +159,23 @@ def best_tps(trades, top_n=3):
     return best
 
 def setup_driver():
-    # Use the system-installed Chromium driver
+    # Use the system-installed driver from the Dockerfile
     chrome_options = Options()
     chrome_options.add_argument("--headless")
     chrome_options.add_argument("--disable-gpu")
     chrome_options.add_argument("--no-sandbox")
     chrome_options.add_argument("--disable-dev-shm-usage")
-    # Set the binary location to the one installed by your Dockerfile
-    chrome_options.binary_location = "/usr/bin/chromium-browser"
+    chrome_options.add_argument("--disable-setuid-sandbox")
+    # Try multiple common binary locations for Chromium
+    possible_binaries = ["/usr/bin/chromium", "/usr/bin/chromium-browser", "/usr/bin/google-chrome"]
+    for binary in possible_binaries:
+        if os.path.exists(binary):
+            chrome_options.binary_location = binary
+            break
+    else:
+        raise ValueError("No Chrome/Chromium binary found on PATH.")
     chrome_options.add_argument(f"--user-agent={random_user_agent()}")
-    # Use the system-installed driver; in our Dockerfile we install chromium-driver so its location is:
+    # Use the system-installed chromium-driver (installed via apt in your Dockerfile)
     service = Service(executable_path="/usr/bin/chromium-driver")
     return webdriver.Chrome(service=service, options=chrome_options)
 
