@@ -8,7 +8,7 @@ RUN apt-get update && apt-get install -y \
     chromium-driver \
     && rm -rf /var/lib/apt/lists/*
 
-ENV CHROME_BIN=/usr/bin/chromium-browser
+ENV CHROME_BIN=/usr/bin/chromium
 ENV PATH="/usr/bin:${PATH}"
 
 COPY requirements.txt .

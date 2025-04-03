@@ -11,7 +11,6 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.chrome.options import Options
-# Removed chromedriver_autoinstaller import
 
 # -----------------------------
 # Your Functions
@@ -160,16 +159,17 @@ def best_tps(trades, top_n=3):
     return best
 
 def setup_driver():
-    # Remove chromedriver_autoinstaller.install() if present
+    # Use the system-installed Chromium driver
     chrome_options = Options()
     chrome_options.add_argument("--headless")
     chrome_options.add_argument("--disable-gpu")
     chrome_options.add_argument("--no-sandbox")
     chrome_options.add_argument("--disable-dev-shm-usage")
-    # Set binary location to the typical path for Chromium on Streamlit Cloud (Debian-based)
+    # Set the binary location to the one installed by your Dockerfile
     chrome_options.binary_location = "/usr/bin/chromium-browser"
     chrome_options.add_argument(f"--user-agent={random_user_agent()}")
-    service = Service(executable_path="./chromedriver")
+    # Use the system-installed driver; in our Dockerfile we install chromium-driver so its location is:
+    service = Service(executable_path="/usr/bin/chromium-driver")
     return webdriver.Chrome(service=service, options=chrome_options)
 
 def random_user_agent():
