@@ -11,7 +11,7 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.chrome.options import Options
-import chromedriver_autoinstaller
+# Removed chromedriver_autoinstaller import
 
 # -----------------------------
 # Your Functions
@@ -159,20 +159,18 @@ def best_tps(trades, top_n=3):
     best = sorted(expected_returns.items(), key=lambda x: x[1], reverse=True)[:top_n]
     return best
 
-import chromedriver_autoinstaller
-
 def setup_driver():
-    # Automatically install chromedriver if not present
-    chromedriver_autoinstaller.install()
+    # Do not use chromedriver_autoinstaller in this option
     chrome_options = Options()
     chrome_options.add_argument("--headless")
     chrome_options.add_argument("--disable-gpu")
     chrome_options.add_argument("--no-sandbox")
     chrome_options.add_argument("--disable-dev-shm-usage")
-    # Set binary location to a common Linux location for Chromium
-    chrome_options.binary_location = "/usr/bin/chromium-browser"
+    # Set binary location to the one installed via Dockerfile
+    chrome_options.binary_location = "/usr/bin/chromium"
     chrome_options.add_argument(f"--user-agent={random_user_agent()}")
-    return webdriver.Chrome(options=chrome_options)
+    service = Service(executable_path="./chromedriver")
+    return webdriver.Chrome(service=service, options=chrome_options)
 
 def random_user_agent():
     return random.choice([
