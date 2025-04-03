@@ -6,6 +6,7 @@ from datetime import datetime, timedelta
 import statistics
 from dateutil import parser
 from selenium import webdriver
+from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
@@ -158,32 +159,32 @@ def best_tps(trades, top_n=3):
     return best
 
 def setup_driver():
-    from selenium.webdriver.common.desired_capabilities import DesiredCapabilities
-
-    # Hardcoded BrowserStack credentials
-    username = "toby_1HAemr"
-    access_key = "4vsM5psR28yscxcybNjV"
-    remote_url = f"https://{username}:{access_key}@hub-cloud.browserstack.com/wd/hub"
-    
-    options = Options()
-    options.add_argument("--headless")
-    options.add_argument("--disable-gpu")
-    options.add_argument("--no-sandbox")
-    options.add_argument("--disable-dev-shm-usage")
-    # Set any additional options if desired
-    options.set_capability("browserstack.debug", True)
-    
-    # Merge desired capabilities into options using set_capability
-    options.set_capability("os", "Windows")
-    options.set_capability("os_version", "10")
-    options.set_capability("browser", "Chrome")
-    options.set_capability("browser_version", "latest")
-    options.set_capability("name", "Streamlit Selenium Test")
-    
-    return webdriver.Remote(
-        command_executor=remote_url,
-        options=options
-    )
+    # Use the local, system-installed driver
+    chrome_options = Options()
+    chrome_options.add_argument("--headless")
+    chrome_options.add_argument("--disable-gpu")
+    chrome_options.add_argument("--no-sandbox")
+    chrome_options.add_argument("--disable-dev-shm-usage")
+    chrome_options.add_argument("--disable-setuid-sandbox")
+    # Check for CHROME_BIN from environment; if not set, default to a common path.
+    binary_location = os.environ.get("CHROME_BIN", "/usr/bin/chromium-browser")
+    if os.path.exists(binary_location):
+        chrome_options.binary_location = binary_location
+    else:
+        # Try common paths
+        possible_binaries = ["/usr/bin/chromium", "/usr/bin/chromium-browser", "/usr/bin/google-chrome"]
+        found = False
+        for binary in possible_binaries:
+            if os.path.exists(binary):
+                chrome_options.binary_location = binary
+                found = True
+                break
+        if not found:
+            raise ValueError("No Chrome/Chromium binary found on PATH.")
+    chrome_options.add_argument(f"--user-agent={random_user_agent()}")
+    # Use the system-installed chromium-driver (ensure your Dockerfile installs this)
+    service = Service(executable_path="/usr/bin/chromium-driver")
+    return webdriver.Chrome(service=service, options=chrome_options)
 
 def random_user_agent():
     return random.choice([
@@ -230,7 +231,6 @@ if caller:
                 trades_25 = trades_all[:25]
                 trades_50 = trades_all[:50]
             
-            # Remove the while loop. Instead, show the TP Calculation method selection once.
             tp_method = st.radio(
                 "Choose TP Calculation Method:",
                 ("Show TP thresholds with Hit Rate", "Show Best 3 TPs (based on Expected Return)", "Go back to Main Menu"),
