@@ -110,7 +110,7 @@ def get_caller_stats(driver, name, mode, custom_val=None, print_summary=True):
     trades = []
     try:
         WebDriverWait(driver, 15).until(
-            EC.presence_of_all_elements_located((By.CLASS_NAME, "call-box"))
+            lambda d: len(d.find_elements(By.CLASS_NAME, "call-box")) > 0
         )
         driver.execute_script("window.scrollTo(0, 300);")
         time.sleep(1)
@@ -165,17 +165,14 @@ def setup_driver():
     access_key = "4vsM5psR28yscxcybNjV"
     remote_url = f"https://{username}:{access_key}@hub-cloud.browserstack.com/wd/hub"
     
-    # Set up Chrome options
     options = Options()
     options.add_argument("--headless")
     options.add_argument("--disable-gpu")
     options.add_argument("--no-sandbox")
     options.add_argument("--disable-dev-shm-usage")
+    # Set any additional options if desired
+    options.set_capability("browserstack.debug", True)
     
-    # You can set additional options here if desired.
-    options.set_capability('browserstack.debug', True)
-    
-    # Define desired capabilities – these will be merged with options
     desired_cap = DesiredCapabilities.CHROME.copy()
     desired_cap["os"] = "Windows"
     desired_cap["os_version"] = "10"
@@ -183,13 +180,11 @@ def setup_driver():
     desired_cap["browser_version"] = "latest"
     desired_cap["name"] = "Streamlit Selenium Test"
     
-    # Create the remote WebDriver (Selenium 4 supports both options and desired_capabilities)
-    driver = webdriver.Remote(
+    return webdriver.Remote(
         command_executor=remote_url,
-        options=options,
-        desired_capabilities=desired_cap
+        desired_capabilities=desired_cap,
+        options=options
     )
-    return driver
 
 def random_user_agent():
     return random.choice([
