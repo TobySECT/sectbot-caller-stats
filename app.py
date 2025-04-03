@@ -160,14 +160,14 @@ def best_tps(trades, top_n=3):
     return best
 
 def setup_driver():
-    # Do not use chromedriver_autoinstaller in this option
+    # Remove chromedriver_autoinstaller.install() if present
     chrome_options = Options()
     chrome_options.add_argument("--headless")
     chrome_options.add_argument("--disable-gpu")
     chrome_options.add_argument("--no-sandbox")
     chrome_options.add_argument("--disable-dev-shm-usage")
-    # Set binary location to the one installed via Dockerfile
-    chrome_options.binary_location = "/usr/bin/chromium"
+    # Set binary location to the typical path for Chromium on Streamlit Cloud (Debian-based)
+    chrome_options.binary_location = "/usr/bin/chromium-browser"
     chrome_options.add_argument(f"--user-agent={random_user_agent()}")
     service = Service(executable_path="./chromedriver")
     return webdriver.Chrome(service=service, options=chrome_options)
