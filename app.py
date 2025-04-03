@@ -162,17 +162,18 @@ def best_tps(trades, top_n=3):
 import chromedriver_autoinstaller
 
 def setup_driver():
-    # Automatically install chromedriver matching your installed Chrome/Chromium version
-    chromedriver_autoinstaller.install()
     chrome_options = Options()
     chrome_options.add_argument("--headless")
     chrome_options.add_argument("--disable-gpu")
     chrome_options.add_argument("--no-sandbox")
     chrome_options.add_argument("--disable-dev-shm-usage")
+    # Specify the binary location for Chrome (or Chromium)
+    chrome_options.binary_location = "/usr/bin/google-chrome"
     chrome_options.add_argument(f"--user-agent={random_user_agent()}")
-    # You might also need to set the binary location if required
-    # chrome_options.binary_location = "/usr/bin/chromium"  (if you're using Chromium)
-    return webdriver.Chrome(options=chrome_options)
+    # Use the autoinstaller if you want, or remove it if you prefer to manage chromedriver manually.
+    # chromedriver_autoinstaller.install()  # Remove this if you set up chromedriver manually.
+    service = Service(executable_path="./chromedriver")  # Ensure chromedriver is in your repo
+    return webdriver.Chrome(service=service, options=chrome_options)
 
 
 def random_user_agent():
